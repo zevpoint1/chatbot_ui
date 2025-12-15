@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbot UI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f1f1;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #chat-container {
+            width: 400px;
+            height: 600px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chat-header {
+            background: #4a90e2;
+            padding: 15px;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            max-width: 80%;
+            padding: 10px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .user {
+            background: #dcf8c6;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .bot {
+            background: #e6e6e6;
+            margin-right: auto;
+        }
+
+        #input-area {
+            display: flex;
+            padding: 10px;
+            background: #fff;
+        }
+
+        #input-box {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        #send-btn {
+            padding: 10px 15px;
+            margin-left: 8px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #typing {
+            padding: 0 15px;
+            font-size: 12px;
+            color: gray;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="chat-container">
+    <div id="chat-header">Claude Chatbot</div>
+    <div id="messages"></div>
+    <div id="typing">Bot is typing...</div>
+
+    <div id="input-area">
+        <input type="text" id="input-box" placeholder="Type your message..." />
+        <button id="send-btn">Send</button>
+    </div>
+</div>
+
+<script>
+    const apiUrl = "https://zp-chatbot-v2-ewapbch4bmcgh6eu.southindia-01.azurewebsites.net/api/httptrigger";
+
+    const messagesDiv = document.getElementById("messages");
+    const inputBox = document.getElementById("input-box");
+    const sendBtn = document.getElementById("send-btn");
+    const typingIndicator = document.getElementById("typing");
+
+    function addMessage(content, role) {
+        const div = document.createElement("div");
+        div.className = "message " + role;
+        div.innerText = content;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+async function sendMessage() {
+    const userMessage = inputBox.value.trim();
+    if (!userMessage) return;
+
+    addMessage(userMessage, "user");
+    inputBox.value = "";
+    typingIndicator.style.display = "block";
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: userMessage,
+                user_id: "web_user"
+            })
+        });
+
+        const data = await response.json();
+
+        typingIndicator.style.display = "none";
+        addMessage(data.response, "bot");
+
+    } catch (err) {
+        typingIndicator.style.display = "none";
+        addMessage("⚠️ Error connecting to server", "bot");
+        console.error(err);
+    }
+}
+
+
+    sendBtn.onclick = sendMessage;
+
+    inputBox.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") sendMessage();
+    });
+</script>
+
+</body>
+</html>
