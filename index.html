@@ -91,14 +91,24 @@
             color: gray;
             display: none;
         }
+
+        #status {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #b33;
+            display: none;
+            background: #fff6f6;
+            border-top: 1px solid #ffdede;
+        }
     </style>
 </head>
 <body>
 
 <div id="chat-container">
-    <div id="chat-header">OpenAI Chatbot</div>
+    <div id="chat-header">Zevpoint Chatbot</div>
     <div id="messages"></div>
     <div id="typing">Zevpoint Advisor is typing...</div>
+    <div id="status" role="status" aria-live="polite"></div>
 
     <div id="input-area">
         <input type="text" id="input-box" placeholder="Type your message..." />
@@ -107,12 +117,15 @@
 </div>
 
 <script>
+    // ----- CHANGE ONLY THIS IF YOU HAVE A CUSTOM URL -----
     const apiUrl = "https://zp-chatbot-v2-ewapbch4bmcgh6eu.southindia-01.azurewebsites.net/api/httptrigger";
-    
+    // ----------------------------------------------------
+
     const messagesDiv = document.getElementById("messages");
     const inputBox = document.getElementById("input-box");
     const sendBtn = document.getElementById("send-btn");
     const typingIndicator = document.getElementById("typing");
+    const statusDiv = document.getElementById("status");
 
     function addMessage(content, role) {
         const div = document.createElement("div");
@@ -122,6 +135,16 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
+    function showStatus(msg) {
+        if (!msg) {
+            statusDiv.style.display = "none";
+            statusDiv.innerText = "";
+            return;
+        }
+        statusDiv.style.display = "block";
+        statusDiv.innerText = msg;
+    }
+
 async function sendMessage() {
     const userMessage = inputBox.value.trim();
     if (!userMessage) return;
@@ -129,6 +152,7 @@ async function sendMessage() {
     addMessage(userMessage, "user");
     inputBox.value = "";
     typingIndicator.style.display = "block";
+    showStatus("");
 
     try {
         const response = await fetch(apiUrl, {
@@ -140,24 +164,46 @@ async function sendMessage() {
             })
         });
 
-        const data = await response.json();
+        // Try to parse JSON body (may be missing or non-JSON)
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = null;
+        }
 
         typingIndicator.style.display = "none";
-        addMessage(data.response, "bot");
+
+        if (!response.ok) {
+            const errMsg = (data && data.error) ? data.error : `HTTP ${response.status} ${response.statusText}`;
+            addMessage(`⚠️ Server error: ${errMsg}`, "bot");
+            console.error('Server error', response.status, data);
+
+            // Show more verbose status for debugging
+            showStatus(`Server returned ${response.status}: ${errMsg}`);
+            return;
+        }
+
+        // Show either the answer or any error text returned by the server
+        const reply = (data && (data.response || data.error)) ? (data.response || data.error) : "⚠️ No response from server";
+        addMessage(reply, "bot");
 
     } catch (err) {
         typingIndicator.style.display = "none";
         addMessage("⚠️ Error connecting to server", "bot");
         console.error(err);
+        showStatus('Network error: could not reach the server. Check console for details.');
     }
 }
-
 
     sendBtn.onclick = sendMessage;
 
     inputBox.addEventListener("keypress", function (e) {
         if (e.key === "Enter") sendMessage();
     });
+
+// Optional: for debugging, print the API url in the console (remove in production)
+console.info('Chat UI API URL:', apiUrl);
 </script>
 
 </body>
